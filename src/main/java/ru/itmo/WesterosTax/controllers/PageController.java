@@ -1,5 +1,8 @@
 package ru.itmo.WesterosTax.controllers;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -51,11 +54,27 @@ public class PageController {
         Census censusLast = censusRepository.findFirstByLordOrderByIdDesc(lord);
         Tax taxLast = taxRepository.findFirstByTaxTypeLordOrderByIdDesc(lord);
 
+        // if (unfinishedCensus == null) {
+        //     double midArea = censusLast.getTotalLandArea()/censusLast.getTotalHouseholds();
+        //     double midTax = taxLast.getTotalIncome()/censusLast.getTotalHouseholds();
+        //     BigDecimal roundedMidArea = BigDecimal.valueOf(midArea).setScale(1, RoundingMode.HALF_UP);
+        //     BigDecimal roundedMidTax = BigDecimal.valueOf(midTax).setScale(1, RoundingMode.HALF_UP);
+        //     model.addAttribute("midArea", roundedMidArea);
+        //     model.addAttribute("midTax", roundedMidTax);
+        // }
+
         model.addAttribute("unfinishedCensus", unfinishedCensus);
         model.addAttribute("censusRegions", censusRegionRepository.findAllByCensusOrderById(unfinishedCensus));
 
         model.addAttribute("unfinishedTax", unfinishedTax);
         model.addAttribute("taxRegions", taxRegionRepository.findAllByTaxOrderById(unfinishedTax));
+
+        if (unfinishedTax != null) {
+            Long taxTypeId = unfinishedTax.getTaxType().getId();
+            String formula = taxTypeRepository.findFormulaById(taxTypeId);
+            int formulaInt = Integer.parseInt(formula);
+            model.addAttribute("taxFormula", formulaInt);
+        }
 
         model.addAttribute("censusLast", censusLast);
         model.addAttribute("taxLast", taxLast);
@@ -70,6 +89,22 @@ public class PageController {
         Census unfinishedCensus = censusRepository.findByLordAndFinished(landowner.getLord(), false);
         CensusRegion censusRegionLast = censusRegionRepository.findFirstByRegionOrderByIdDesc(landowner.getRegion());
         TaxRegion taxRegionLast = taxRegionRepository.findFirstByRegionOrderByIdDesc(landowner.getRegion());
+
+        // if (unfinishedCensus == null) {
+        //     double midAreaD = censusRegionLast.getTotalLandArea()/censusRegionLast.getRegion().getTotalHouseholds();
+        //     double midTaxD = taxRegionLast.getTotalIncome()/censusRegionLast.getRegion().getTotalHouseholds();
+        //     BigDecimal roundedMidAreaD = BigDecimal.valueOf(midAreaD).setScale(1, RoundingMode.HALF_UP);
+        //     BigDecimal roundedMidTaxD = BigDecimal.valueOf(midTaxD).setScale(1, RoundingMode.HALF_UP);
+        //     model.addAttribute("midAreaD", roundedMidAreaD);
+        //     model.addAttribute("midTaxD", roundedMidTaxD);
+        // }
+
+        if (unfinishedTax != null) {
+            Long taxTypeId = unfinishedTax.getTaxType().getId();
+            String formula = taxTypeRepository.findFormulaById(taxTypeId);
+            int formulaInt = Integer.parseInt(formula);
+            model.addAttribute("taxFormula", formulaInt);
+        }
 
         CensusRegion censusRegion = censusRegionRepository.findByCensusAndRegion(unfinishedCensus, landowner.getRegion());
         model.addAttribute("unfinishedCensus", unfinishedCensus);

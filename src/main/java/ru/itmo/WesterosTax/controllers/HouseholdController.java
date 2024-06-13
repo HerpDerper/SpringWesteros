@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.*;
 import ru.itmo.WesterosTax.models.*;
 import ru.itmo.WesterosTax.repositories.*;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 import javax.validation.Valid;
 
 @RequestMapping("/household")
@@ -30,9 +33,11 @@ public class HouseholdController {
 
     private final TaxRepository taxRepository;
 
+    private final TaxTypeRepository taxTypeRepository;
+
     public HouseholdController(UserRepository userRepository, HouseholdRepository householdRepository, DistrictRepository districtRepository,
                                RegionRepository regionRepository, CensusRepository censusRepository, CensusDistrictRepository censusDistrictRepository,
-                               TaxDistrictRepository taxDistrictRepository, TaxRepository taxRepository) {
+                               TaxDistrictRepository taxDistrictRepository, TaxRepository taxRepository, TaxTypeRepository taxTypeRepository) {
         this.userRepository = userRepository;
         this.householdRepository = householdRepository;
         this.districtRepository = districtRepository;
@@ -41,6 +46,7 @@ public class HouseholdController {
         this.censusDistrictRepository = censusDistrictRepository;
         this.taxDistrictRepository = taxDistrictRepository;
         this.taxRepository = taxRepository;
+        this.taxTypeRepository = taxTypeRepository;
     }
 
     @GetMapping("index")
@@ -49,11 +55,26 @@ public class HouseholdController {
         User lord = courier.getLandowner().getLord();
         Tax unfinishedTax = taxRepository.findByTaxTypeLordAndFinished(lord, false);
         Census unfinishedCensus = censusRepository.findByLordAndFinished(lord, false);
+        Iterable<Household> households = courier.getDistrict().getHouseholds();
+
         if (unfinishedCensus != null) {
             model.addAttribute("unfinishedCensus", unfinishedCensus);
         }
         if (unfinishedTax != null) {
             model.addAttribute("unfinishedTax", unfinishedTax);
+            Long taxTypeId = unfinishedTax.getTaxType().getId();
+            String formula = taxTypeRepository.findFormulaById(taxTypeId);
+
+            int formulaInt = Integer.parseInt(formula);
+            model.addAttribute("taxFormula", formulaInt);
+
+            for (Household household : households) {
+                double sum = household.getLandArea() + household.getCattleHeadcount() + household.getResidentCount();
+                double dividedBy100 = sum / 100.0;
+                double result = Math.abs(dividedBy100 * Double.parseDouble(formula));
+                BigDecimal roundedResult = BigDecimal.valueOf(result).setScale(1, RoundingMode.HALF_UP);
+                household.setTaxesCollected(roundedResult.doubleValue());
+            }
         }
         CensusDistrict censusDistrict = censusDistrictRepository.findByCensusRegionCensusAndDistrict(unfinishedCensus, courier.getDistrict());
         TaxDistrict taxDistrict = taxDistrictRepository.findByTaxRegionTaxAndDistrict(unfinishedTax, courier.getDistrict());
